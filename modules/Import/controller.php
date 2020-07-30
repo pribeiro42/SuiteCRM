@@ -66,7 +66,7 @@ class ImportController extends SugarController
         if (!isset($_REQUEST['import_module'])) {
             $_REQUEST['message'] = $mod_strings['LBL_ERROR_IMPORTS_NOT_SET_UP'];
             $this->view = 'error';
-	    $this->_processed = true;
+            $this->_processed = true;
             return; // there is no module to load
         }
 
@@ -106,12 +106,12 @@ class ImportController extends SugarController
         $results = array('message' => '');
         // handle publishing and deleting import maps
         if (isset($_REQUEST['delete_map_id'])) {
-            $import_map = new ImportMap();
+            $import_map = BeanFactory::newBean('Import_1');
             $import_map->mark_deleted($_REQUEST['delete_map_id']);
         }
 
         if (isset($_REQUEST['publish'])) {
-            $import_map = new ImportMap();
+            $import_map = BeanFactory::newBean('Import_1');
 
             $import_map = $import_map->retrieve($_REQUEST['import_map_id'], false);
 

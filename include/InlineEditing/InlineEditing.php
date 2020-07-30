@@ -161,7 +161,7 @@ function getEditFieldHTML($module, $fieldname, $aow_field, $view = 'EditView', $
 
         // Save it to the cache file
         if ($fh = @sugar_fopen($file, 'w')) {
-            fputs($fh, $contents);
+            fwrite($fh, $contents);
             fclose($fh);
         }
     }
@@ -285,7 +285,7 @@ function getEditFieldHTML($module, $fieldname, $aow_field, $view = 'EditView', $
         if ($currency_id != '' && !stripos($fieldname, '_USD')) {
             $userCurrencyId = $current_user->getPreference('currency');
             if ($currency_id != $userCurrencyId) {
-                $currency = new Currency();
+                $currency = BeanFactory::newBean('Currencies');
                 $currency->retrieve($currency_id);
                 $value = $currency->convertToDollar($value);
                 $currency->retrieve($userCurrencyId);
@@ -337,6 +337,10 @@ function saveField($field, $id, $module, $value)
             } else {
                 $bean->$field = $value;
             }
+        } elseif ($module === 'Leads' && $field === 'account_name') {
+            require_once('modules/Leads/LeadFormBase.php');
+            $bean->$field = $value;
+            $bean->account_id = LeadFormBase::handleLeadAccountName($bean);
         } else {
             $bean->$field = $value;
         }
@@ -391,7 +395,7 @@ function getDisplayValue($bean, $field, $method = "save")
 
 function formatDisplayValue($bean, $value, $vardef, $method = "save")
 {
-    global $app_list_strings, $timedate;
+    global $app_list_strings, $timedate, $current_user;
 
     //Fake the params so we can pass the values through the sugarwidgets to get the correct display html.
 
@@ -417,23 +421,20 @@ function formatDisplayValue($bean, $value, $vardef, $method = "save")
         $value = "<b>" . $SugarWidgetSubPanelDetailViewLink->displayList($vardef) . "</b>";
     }
 
-    //If field is of type date time, datetimecombo or date
-    if ($vardef['type'] == "datetimecombo" || $vardef['type'] == "datetime" || $vardef['type'] == "date") {
-        if ($method != "close") {
-            if ($method != "save") {
-                $value = convertDateUserToDB($value);
-            }
-            $datetime_format = $timedate->get_date_time_format();
-
-            if ($vardef['type'] == "date") {
-                $value = $value . ' 00:00:00';
-            }
-            // create utc date (as it's utc in db)
-            // use the calculated datetime_format
-            $datetime = DateTime::createFromFormat($datetime_format, $value,new DateTimeZone('UTC'));
-
-            $value = $datetime->format($datetime_format);
+    if ($method !== 'close' && ($vardef['type'] === 'datetimecombo' || $vardef['type'] === 'datetime' || $vardef['type'] === 'date')) {
+        if ($method != 'save') {
+            $value = convertDateUserToDB($value);
         }
+        if ($vardef['type'] == 'datetime' || $vardef['type'] == 'datetimecombo') {
+            $datetime_format = $timedate->get_date_time_format($current_user);
+        } elseif ($vardef['type'] == 'date') {
+            $datetime_format = $timedate->get_date_format($current_user);
+        }
+        // create utc date (as it's utc in db)
+        // use the calculated datetime_format
+        $datetime = DateTime::createFromFormat($datetime_format, $value, new DateTimeZone('UTC'));
+
+        $value = $datetime->format($datetime_format);
     }
 
     //If field is of type bool, checkbox.
@@ -516,9 +517,6 @@ function formatDisplayValue($bean, $value, $vardef, $method = "save")
         } else {
             $value = format_number($value);
         }
-    }
-    if ($vardef['type'] == "date" && $method == "save") {
-        $value = substr($value, 0, strlen($value) - 6);
     }
     return $value;
 }

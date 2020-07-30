@@ -59,7 +59,7 @@ $sugar_smarty->assign('APP_LIST', $app_list_strings);
 /*foreach($modInvisList as $modinvisname){
     unset($app_list_strings['moduleList'][$modinvisname]);
 }*/
-$role = new ACLRole();
+$role = BeanFactory::newBean('ACLRoles');
 $role_name = '';
 $return= array('module'=>'ACLRoles', 'action'=>'index', 'record'=>'');
 if (!empty($_REQUEST['record'])) {
@@ -93,7 +93,7 @@ if (isset($_REQUEST['return_module'])) {
 $sugar_smarty->assign('RETURN', $return);
 $names = ACLAction::setupCategoriesMatrix($categories);
 if (!empty($names)) {
-    $tdwidth = 100 / sizeof($names);
+    $tdwidth = 100 / count($names);
 }
 $sugar_smarty->assign('CATEGORIES', $categories);
 $sugar_smarty->assign('CATEGORY_NAME', $_REQUEST['category_name']);

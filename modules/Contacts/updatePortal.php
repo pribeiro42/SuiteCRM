@@ -86,7 +86,7 @@ class updatePortal
         require_once 'modules/Emails/Email.php';
         require_once 'include/SugarPHPMailer.php';
 
-        $emailObj = new Email();
+        $emailObj = BeanFactory::newBean('Emails');
         $emailSettings = getPortalEmailSettings();
 
         $mail = new SugarPHPMailer();
@@ -115,7 +115,7 @@ class updatePortal
                 $emailObj->parent_type = $relatedBean->module_dir;
                 $emailObj->parent_id = $relatedBean->id;
             }
-            $emailObj->date_sent = TimeDate::getInstance()->nowDb();
+            $emailObj->date_sent_received = TimeDate::getInstance()->nowDb();
             $emailObj->modified_user_id = '1';
             $emailObj->created_by = '1';
             $emailObj->status = 'sent';

@@ -41,13 +41,7 @@ if (!defined('sugarEntry') || !sugarEntry) {
  * display the words "Powered by SugarCRM" and "Supercharged by SuiteCRM".
  */
 
-/*********************************************************************************
 
- * Description:  TODO: To be written.
- * Portions created by SugarCRM are Copyright (C) SugarCRM, Inc.
- * All Rights Reserved.
- * Contributor(s): ______________________________________..
- ********************************************************************************/
 
 
 require_once('modules/Audit/field_assoc.php');
@@ -82,6 +76,17 @@ class Audit extends SugarBean
 
 
     public $new_schema = true;
+
+    /**
+     * @param int $id
+     * @param bool $encode
+     * @param bool $deleted
+     * @return SugarBean|null
+     */
+    public function retrieve($id = -1, $encode = true, $deleted = true)
+    {
+        return null;
+    }
 
     public function get_summary_text()
     {
@@ -126,7 +131,8 @@ class Audit extends SugarBean
 
         if ($focus && $focus->is_AuditEnabled()) {
             $order= ' order by '.$focus->get_audit_table_name().'.date_created desc' ;//order by contacts_audit.date_created desc
-            $query = "SELECT ".$focus->get_audit_table_name().".*, users.user_name FROM ".$focus->get_audit_table_name()." LEFT JOIN users ON ".$focus->get_audit_table_name().".created_by = users.id WHERE ".$focus->get_audit_table_name().".parent_id = '$focus->id'".$order;
+            $unknown_label = translate('LBL_UNKNOWN', 'Users');
+            $query = "SELECT ".$focus->get_audit_table_name().".*, IFNULL(users.user_name, '".$unknown_label."') AS user_name FROM ".$focus->get_audit_table_name() . " LEFT JOIN users ON ".$focus->get_audit_table_name().".created_by = users.id WHERE ".$focus->get_audit_table_name().".parent_id = '$focus->id'".$order;
 
             $result = $focus->db->query($query);
             // We have some data.
@@ -153,7 +159,7 @@ class Audit extends SugarBean
                             }
                             $temp_list[$field['name']]=$date_created;
                         }
-                        if (($field['name'] == 'before_value_string' || $field['name'] == 'after_value_string') && ($row['data_type'] == "enum" || $row['data_type'] == "multienum")) {
+                        if (($field['name'] == 'before_value_string' || $field['name'] == 'after_value_string' || $field['name'] == 'before_value_text' || $field['name'] == 'after_value_text') && ($row['data_type'] == "enum" || $row['data_type'] == "multienum")) {
                             global $app_list_strings;
                             $enum_keys = unencodeMultienum($temp_list[$field['name']]);
                             $enum_values = array();

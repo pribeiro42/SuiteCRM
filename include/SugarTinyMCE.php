@@ -42,14 +42,6 @@ if (!defined('sugarEntry') || !sugarEntry) {
  */
 
 /**
-
- * Description:
- * Portions created by SugarCRM are Copyright (C) SugarCRM, Inc. All Rights
- * Reserved. Contributor(s): ______________________________________..
- *********************************************************************************/
-
-
-/**
  * PHP wrapper class for Javascript driven TinyMCE WYSIWYG HTML editor
  */
 class SugarTinyMCE
@@ -141,25 +133,34 @@ class SugarTinyMCE
         $jsConfig = $json->encode($config);
 
         $instantiateCall = '';
+        $unique = 'default';
         if (!empty($targets)) {
             $exTargets = explode(",", $targets);
+            $unique = $exTargets[0];
             foreach ($exTargets as $instance) {
                 $instantiateCall .= "tinyMCE.execCommand('mceAddControl', false, document.getElementById('{$instance}'));\n";
             }
         }
         $path = getJSPath('include/javascript/tiny_mce/tiny_mce.js');
         $ret =<<<eoq
-<script type="text/javascript" language="Javascript" src="$path"></script>
-
-<script type="text/javascript" language="Javascript">
+<script type="text/javascript"  src="$path"></script>
+<script type="text/javascript">
 <!--
-$( document ).ready(function() {
+$(document).ready(function(){
+  if (!SUGAR.ajaxUI.hist_loaded){
+	load_mce_{$unique}();
+	}
+});
+if (SUGAR.ajaxUI && SUGAR.ajaxUI.hist_loaded){
+    setTimeout(function(){ load_mce_{$unique}();},40);
+}
+function load_mce_{$unique}(){
     if (!SUGAR.util.isTouchScreen()) {
-        if(tinyMCE.editors.length == 0 ){
+        if(tinyMCE.editors.length === 0 ){
             tinyMCE.init({$jsConfig});
         }else{
            {$instantiateCall}
-        }      
+        }
     } else {
 eoq;
         $exTargets = explode(",", $targets);
@@ -171,7 +172,7 @@ eoq;
         }
         $ret .=<<<eoq
     }
-});
+}
 -->
 </script>
 

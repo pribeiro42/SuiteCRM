@@ -155,7 +155,7 @@ $server->register(
         'password' => 'xsd:string',
         'parent_id' => 'xsd:string',
         'contact_ids' => 'xsd:string',
-        'date_sent' => 'xsd:date',
+        'date_sent_received' => 'xsd:date',
         'email_subject' => 'xsd:string',
         'email_body' => 'xsd:string'
     ),
@@ -256,9 +256,9 @@ function end_session($user_name)
 function validate_user($user_name, $password)
 {
     global $server, $current_user, $sugar_config, $system_config;
-    $user = new User();
+    $user = BeanFactory::newBean('Users');
     $user->user_name = $user_name;
-    $system_config = new Administration();
+    $system_config = BeanFactory::newBean('Administration');
     $system_config->retrieveSettings('system');
     $authController = new AuthenticationController();
     // Check to see if the user name and password are consistent.
@@ -269,21 +269,22 @@ function validate_user($user_name, $password)
         login_success();
 
         return true;
-    }
-    if (function_exists('openssl_decrypt')) {
-        $password = decrypt_string($password);
-        if ($authController->login($user_name, $password) && isset($_SESSION['authenticated_user_id'])) {
-            $user->retrieve($_SESSION['authenticated_user_id']);
-            $current_user = $user;
-            login_success();
-
-            return true;
-        }
     } else {
-        $GLOBALS['log']->fatal("SECURITY: failed attempted login for $user_name using SOAP api");
-        $server->setError("Invalid username and/or password");
+        if (function_exists('openssl_decrypt')) {
+            $password = decrypt_string($password);
+            if ($authController->login($user_name, $password) && isset($_SESSION['authenticated_user_id'])) {
+                $user->retrieve($_SESSION['authenticated_user_id']);
+                $current_user = $user;
+                login_success();
 
-        return false;
+                return true;
+            }
+        } else {
+            $GLOBALS['log']->fatal("SECURITY: failed attempted login for $user_name using SOAP api");
+            $server->setError("Invalid username and/or password");
+
+            return false;
+        }
     }
 }
 
@@ -392,7 +393,7 @@ function add_leads_matching_email_address(&$output_list, $email_address, &$seed_
 }
 
 /**
- * Return a list of modules related to the specifed contact record
+ * Return a list of modules related to the specified contact record
  *
  * This function does not require a session be created first.
  *
@@ -407,7 +408,7 @@ function get_contact_relationships($user_name, $password, $id)
         return array();
     }
 
-    $seed_contact = new Contact();
+    $seed_contact = BeanFactory::newBean('Contacts');
     // Verify that the user has permission to see Contact list views
     if (!$seed_contact->ACLAccess('ListView')) {
         return;
@@ -474,8 +475,8 @@ function contact_by_email($user_name, $password, $email_address)
         return array();
     }
 
-    $seed_contact = new Contact();
-    $seed_lead = new Lead();
+    $seed_contact = BeanFactory::newBean('Contacts');
+    $seed_lead = BeanFactory::newBean('Leads');
     $output_list = array();
     $email_address_list = explode("; ", $email_address);
 
@@ -572,7 +573,7 @@ function user_list($user, $password)
         return array();
     }
 
-    $seed_user = new User();
+    $seed_user = BeanFactory::newBean('Users');
     $output_list = array();
     if (!$seed_user->ACLAccess('ListView')) {
         return $output_list;
@@ -594,11 +595,11 @@ function user_list($user, $password)
  * @param string $name -- Name to search for.
  * @param string $where -- Where clause defaults to ''
  * @param int $msi_id -- Response array index
- * @return array -- Resturns a list of contacts that have the provided name.
+ * @return array -- Returns a list of contacts that have the provided name.
  */
 function contact_by_search($name, $where = '', $msi_id = '0')
 {
-    $seed_contact = new Contact();
+    $seed_contact = BeanFactory::newBean('Contacts');
     if ($where == '') {
         $where = $seed_contact->build_generic_where_clause($name);
     }
@@ -642,7 +643,7 @@ function get_lead_array($lead, $msi_id = '0')
 
 function lead_by_search($name, $where = '', $msi_id = '0')
 {
-    $seed_lead = new Lead();
+    $seed_lead = BeanFactory::newBean('Leads');
     if ($where == '') {
         $where = $seed_lead->build_generic_where_clause($name);
     }
@@ -684,7 +685,7 @@ function get_account_array($account, $msi_id)
 
 function account_by_search($name, $where = '', $msi_id = '0')
 {
-    $seed_account = new Account();
+    $seed_account = BeanFactory::newBean('Accounts');
     if (!$seed_account->ACLAccess('ListView')) {
         return array();
     }
@@ -726,7 +727,7 @@ function get_opportunity_array($value, $msi_id = '0')
 
 function opportunity_by_search($name, $where = '', $msi_id = '0')
 {
-    $seed = new Opportunity();
+    $seed = BeanFactory::newBean('Opportunities');
     if (!$seed->ACLAccess('ListView')) {
         return array();
     }
@@ -788,7 +789,7 @@ function get_case_array($value, $msi_id)
 
 function bug_by_search($name, $where = '', $msi_id = '0')
 {
-    $seed = new Bug();
+    $seed = BeanFactory::newBean('Bugs');
     if (!$seed->ACLAccess('ListView')) {
         return array();
     }
@@ -810,7 +811,7 @@ function bug_by_search($name, $where = '', $msi_id = '0')
 
 function case_by_search($name, $where = '', $msi_id = '0')
 {
-    $seed = new aCase();
+    $seed = BeanFactory::newBean('Cases');
     if (!$seed->ACLAccess('ListView')) {
         return array();
     }
@@ -839,35 +840,35 @@ function case_by_search($name, $where = '', $msi_id = '0')
  * @param string $password -- MD5 hash of the user password for authentication
  * @param id $parent_id -- [optional] The parent record to link the email to.
  * @param unknown_type $contact_ids
- * @param string $date_sent -- Date/time the email was sent in Visual Basic Date format. (e.g. '7/22/2004 9:36:31 AM')
+ * @param string $date_sent_received -- Date/time the email was sent in Visual Basic Date format. (e.g. '7/22/2004 9:36:31 AM')
  * @param string $email_subject -- The subject of the email
  * @param string $email_body -- The body of the email
  * @return "Invalid username and/or password"
  * @return -1 If the authenticated user does not have ACL access to save Email.
  */
-function track_email($user_name, $password, $parent_id, $contact_ids, $date_sent, $email_subject, $email_body)
+function track_email($user_name, $password, $parent_id, $contact_ids, $date_sent_received, $email_subject, $email_body)
 {
     if (!validate_user($user_name, $password)) {
         return "Invalid username and/or password";
     }
     global $current_user;
 
-    $GLOBALS['log']->info("In track email: username: $user_name contacts: $contact_ids date_sent: $date_sent");
+    $GLOBALS['log']->info("In track email: username: $user_name contacts: $contact_ids date_sent_received: $date_sent_received");
 
     // translate date sent from VB format 7/22/2004 9:36:31 AM
     // to yyyy-mm-dd 9:36:31 AM
 
-    $date_sent = preg_replace("@([0-9]*)/([0-9]*)/([0-9]*)( .*$)@", "\\3-\\1-\\2\\4", $date_sent);
+    $date_sent_received = preg_replace("@([0-9]*)/([0-9]*)/([0-9]*)( .*$)@", "\\3-\\1-\\2\\4", $date_sent_received);
 
 
-    $seed_user = new User();
+    $seed_user = BeanFactory::newBean('Users');
 
     $user_id = $seed_user->retrieve_user_id($user_name);
     $seed_user->retrieve($user_id);
     $current_user = $seed_user;
 
 
-    $email = new Email();
+    $email = BeanFactory::newBean('Emails');
     if (!$email->ACLAccess('Save')) {
         return -1;
     }
@@ -876,7 +877,7 @@ function track_email($user_name, $password, $parent_id, $contact_ids, $date_sent
     $email->user_id = $user_id;
     $email->assigned_user_id = $user_id;
     $email->assigned_user_name = $user_name;
-    $email->date_start = $date_sent;
+    $email->date_start = $date_sent_received;
 
     // Save one copy of the email message
     $parent_id_list = explode(";", $parent_id);
@@ -908,12 +909,12 @@ function create_contact($user_name, $password, $first_name, $last_name, $email_a
     }
 
 
-    $seed_user = new User();
+    $seed_user = BeanFactory::newBean('Users');
     $user_id = $seed_user->retrieve_user_id($user_name);
     $seed_user->retrieve($user_id);
 
 
-    $contact = new Contact();
+    $contact = BeanFactory::newBean('Contacts');
     if (!$contact->ACLAccess('Save')) {
         return -1;
     }
@@ -935,11 +936,11 @@ function create_lead($user_name, $password, $first_name, $last_name, $email_addr
     //todo make the activity body not be html encoded
 
 
-    $seed_user = new User();
+    $seed_user = BeanFactory::newBean('Users');
     $user_id = $seed_user->retrieve_user_id($user_name);
 
 
-    $lead = new Lead();
+    $lead = BeanFactory::newBean('Leads');
     if (!$lead->ACLAccess('Save')) {
         return -1;
     }
@@ -961,9 +962,9 @@ function create_account($user_name, $password, $name, $phone, $website)
     //todo make the activity body not be html encoded
 
 
-    $seed_user = new User();
+    $seed_user = BeanFactory::newBean('Users');
     $user_id = $seed_user->retrieve_user_id($user_name);
-    $account = new Account();
+    $account = BeanFactory::newBean('Accounts');
     if (!$account->ACLAccess('Save')) {
         return -1;
     }
@@ -986,9 +987,9 @@ function create_case($user_name, $password, $name)
     //todo make the activity body not be html encoded
 
 
-    $seed_user = new User();
+    $seed_user = BeanFactory::newBean('Users');
     $user_id = $seed_user->retrieve_user_id($user_name);
-    $case = new aCase();
+    $case = BeanFactory::newBean('Cases');
     if (!$case->ACLAccess('Save')) {
         return -1;
     }
@@ -1006,9 +1007,9 @@ function create_opportunity($user_name, $password, $name, $amount)
     }
 
 
-    $seed_user = new User();
+    $seed_user = BeanFactory::newBean('Users');
     $user_id = $seed_user->retrieve_user_id($user_name);
-    $opp = new Opportunity();
+    $opp = BeanFactory::newBean('Opportunities');
     if (!$opp->ACLAccess('Save')) {
         return -1;
     }

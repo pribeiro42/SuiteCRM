@@ -41,13 +41,7 @@ if (!defined('sugarEntry') || !sugarEntry) {
  * display the words "Powered by SugarCRM" and "Supercharged by SuiteCRM".
  */
 
-/*********************************************************************************
 
- * Description:  TODO: To be written.
- * Portions created by SugarCRM are Copyright (C) SugarCRM, Inc.
- * All Rights Reserved.
- * Contributor(s): ______________________________________..
- ********************************************************************************/
 
 
 class Call extends SugarBean
@@ -184,6 +178,9 @@ class Call extends SugarBean
 
     // save date_end by calculating user input
     // this is for calendar
+    private static $remindersInSaving = false;
+
+
     public function save($check_notify = false)
     {
         global $timedate;
@@ -208,7 +205,7 @@ class Call extends SugarBean
         }
         if (empty($_REQUEST['send_invites'])) {
             if (!empty($this->id)) {
-                $old_record = new Call();
+                $old_record = BeanFactory::newBean('Calls');
                 $old_record->retrieve($this->id);
                 $old_assigned_user_id = $old_record->assigned_user_id;
             }
@@ -244,11 +241,13 @@ class Call extends SugarBean
             vCal::cache_sugar_vcal($current_user);
         }
 
-        if (isset($_REQUEST['reminders_data'])) {
+        if (isset($_REQUEST['reminders_data']) && !self::$remindersInSaving) {
+            self::$remindersInSaving = true;
             $reminderData = json_encode(
                 $this->removeUnInvitedFromReminders(json_decode(html_entity_decode($_REQUEST['reminders_data']), true))
             );
             Reminder::saveRemindersDataJson('Calls', $return_id, $reminderData);
+            self::$remindersInSaving = false;
         }
 
         return $return_id;
@@ -305,14 +304,14 @@ class Call extends SugarBean
         // First, get the list of IDs.
         $query = "SELECT contact_id as id from calls_contacts where call_id='$this->id' AND deleted=0";
 
-        $contact = new Contact();
+        $contact = BeanFactory::newBean('Contacts');
         return $this->build_related_list($query, $contact);
     }
 
 
     public function get_summary_text()
     {
-        return "$this->name";
+        return (string)$this->name;
     }
 
     public function create_list_query($order_by, $where, $show_deleted=0)
@@ -608,7 +607,7 @@ class Call extends SugarBean
 
     public function get_call_users()
     {
-        $template = new User();
+        $template = BeanFactory::newBean('Users');
         // First, get the list of IDs.
         $query = "SELECT calls_users.required, calls_users.accept_status, calls_users.user_id from calls_users where calls_users.call_id='$this->id' AND calls_users.deleted=0";
         $GLOBALS['log']->debug("Finding linked records $this->object_name: ".$query);
@@ -616,7 +615,7 @@ class Call extends SugarBean
         $list = array();
 
         while ($row = $this->db->fetchByAssoc($result)) {
-            $template = new User(); // PHP 5 will retrieve by reference, always over-writing the "old" one
+            $template = BeanFactory::newBean('Users'); // PHP 5 will retrieve by reference, always over-writing the "old" one
             $record = $template->retrieve($row['user_id']);
             $template->required = $row['required'];
             $template->accept_status = $row['accept_status'];
@@ -704,7 +703,7 @@ class Call extends SugarBean
         }
 
         foreach ($this->users_arr as $user_id) {
-            $notify_user = new User();
+            $notify_user = BeanFactory::newBean('Users');
             $notify_user->retrieve($user_id);
             $notify_user->new_assigned_user_name = $notify_user->full_name;
             $GLOBALS['log']->info("Notifications: recipient is $notify_user->new_assigned_user_name");
@@ -712,7 +711,7 @@ class Call extends SugarBean
         }
 
         foreach ($this->contacts_arr as $contact_id) {
-            $notify_user = new Contact();
+            $notify_user = BeanFactory::newBean('Contacts');
             $notify_user->retrieve($contact_id);
             $notify_user->new_assigned_user_name = $notify_user->full_name;
             $GLOBALS['log']->info("Notifications: recipient is $notify_user->new_assigned_user_name");
@@ -720,7 +719,7 @@ class Call extends SugarBean
         }
 
         foreach ($this->leads_arr as $lead_id) {
-            $notify_user = new Lead();
+            $notify_user = BeanFactory::newBean('Leads');
             $notify_user->retrieve($lead_id);
             $notify_user->new_assigned_user_name = $notify_user->full_name;
             $GLOBALS['log']->info("Notifications: recipient is $notify_user->new_assigned_user_name");

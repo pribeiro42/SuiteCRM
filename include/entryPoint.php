@@ -56,7 +56,7 @@ if (!defined('PHP_VERSION_ID')) {
 
 if (empty($GLOBALS['installing']) && !file_exists('config.php')) {
     header('Location: install.php');
-    exit();
+    throw new Exception('SuiteCRM is not installed. Entry point needs an installed SuiteCRM, please install first.');
 }
 
 $BASE_DIR = realpath(dirname(__DIR__));
@@ -191,10 +191,10 @@ if (empty($GLOBALS['installing'])) {
         $_SERVER['REQUEST_URI'] = '';
     }
 
-    $current_user = new User();
+    $current_user = BeanFactory::newBean('Users');
     $GLOBALS['current_user'] = $current_user;
     $current_entity = null;
-    $system_config = new Administration();
+    $system_config = BeanFactory::newBean('Administration');
     $system_config->retrieveSettings();
 
     LogicHook::initialize()->call_custom_logic('', 'after_entry_point');
